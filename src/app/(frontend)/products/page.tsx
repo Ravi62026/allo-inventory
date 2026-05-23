@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import Navbar from '@/components/navbar'
 import {
-  Clock, Lock, Package, TrendingUp, Users, Warehouse,
+  Clock, Lock, Package, Users, Warehouse,
   AlertTriangle, CheckCircle, XCircle, ArrowRight, MapPin, Activity
 } from 'lucide-react'
 import type { ProductListing } from '@/types'
+import type { Warehouse as WarehouseType } from '@prisma/client'
 import ReserveModal from '@/components/reserve-modal'
 
 function getDemandLevel(totalUnits: number, reservedUnits: number, availableUnits: number) {
@@ -38,7 +39,7 @@ function stableCount(id: string, min: number, range: number) {
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<ProductListing[]>([])
-  const [warehouses, setWarehouses] = useState<any[]>([])
+  const [warehouses, setWarehouses] = useState<WarehouseType[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState('')

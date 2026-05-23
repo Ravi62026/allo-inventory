@@ -42,7 +42,7 @@ export default function HowItWorks() {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">Race-Condition Free</h3>
                 <p className="text-gray-600 leading-relaxed">
-                  Pessimistic locking with PostgreSQL's SELECT FOR UPDATE ensures exactly one customer gets the last unit. Zero overselling.
+                  Pessimistic locking with PostgreSQL&apos;s SELECT FOR UPDATE ensures exactly one customer gets the last unit. Zero overselling.
                 </p>
               </div>
 
@@ -166,7 +166,7 @@ export default function HowItWorks() {
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">Pessimistic Locking</h3>
                     <p className="text-gray-600 leading-relaxed mb-4">
-                      PostgreSQL's SELECT FOR UPDATE holds row-level locks during transactions. Only one request can acquire the lock, preventing race conditions on the last unit. This is the battle-tested solution used by major inventory systems.
+                      PostgreSQL&apos;s SELECT FOR UPDATE holds row-level locks during transactions. Only one request can acquire the lock, preventing race conditions on the last unit. This is the battle-tested solution used by major inventory systems.
                     </p>
                     <div className="bg-slate-900 text-slate-100 p-4 rounded-lg font-mono text-sm overflow-x-auto">
                       <code>SELECT ... FROM stock WHERE id = ? <span className="text-blue-400">FOR UPDATE</span>;</code>

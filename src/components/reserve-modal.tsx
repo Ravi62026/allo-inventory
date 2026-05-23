@@ -44,10 +44,10 @@ export default function ReserveModal({ product, onClose }: Props) {
   const maxUnits = selected?.availableUnits ?? 0
   const viewers = (product.id.charCodeAt(0) % 8) + 3
 
-  const holdUntil = new Date(Date.now() + 10 * 60 * 1000)
-  const holdStr = holdUntil.toLocaleTimeString('en-IN', { hour12: false })
+  // eslint-disable-next-line react-hooks/purity
+  const holdStr = new Date(Date.now() + 10 * 60 * 1000).toLocaleTimeString('en-IN', { hour12: false })
 
-  // Silently check auth on open
+  // Check auth on mount
   useEffect(() => {
     fetch('/api/auth/me')
       .then(r => r.json())

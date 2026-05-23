@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
-import { ChevronDown, LayoutDashboard, LogOut, User } from 'lucide-react'
+import { ChevronDown, LayoutDashboard, LogOut } from 'lucide-react'
 
 interface AuthUser {
   id: string

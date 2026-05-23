@@ -6,6 +6,8 @@ import { withCache } from '@/lib/cache'
 
 const PRODUCTS_CACHE_TTL = 30
 
+type ReservationSelect = { units: number; status: string }
+
 function buildCacheKey(query: ProductQuery): string {
   const parts = [
     'products',
@@ -26,8 +28,8 @@ export async function listProducts(query: ProductQuery): Promise<ProductListing[
         .map((product) => {
           const availability = product.stocks.map((stock) => {
             const pendingUnits = stock.reservations
-              .filter((r: any) => r.status === 'PENDING')
-              .reduce((sum: number, r: any) => sum + r.units, 0)
+              .filter((r: ReservationSelect) => r.status === 'PENDING')
+              .reduce((sum: number, r: ReservationSelect) => sum + r.units, 0)
 
             return {
               stockId: stock.id,

@@ -124,3 +124,48 @@ export async function expireStaleReservations() {
 
   return { released: expired.length }
 }
+
+// BONUS APIs
+
+export async function validateReservation(stockId: string, units: number) {
+  const stock = await prisma.stock.findUnique({
+    where: { id: stockId },
+    include: { product: true, warehouse: true },
+  })
+
+  if (!stock) throw new ReservationNotFoundError()
+
+  const available = stock.totalUnits - stock.reservedUnits
+  return {
+    stockId,
+    units,
+    available,
+    canReserve: available >= units,
+    message: available >= units ? 'Stock available' : 'Insufficient stock',
+  }
+}
+
+export async function listReservations(status?: string) {
+  return prisma.reservation.findMany({
+    where: status ? { status: status as any } : undefined,
+    include: { stock: { include: { product: true, warehouse: true } } },
+    orderBy: { createdAt: 'desc' },
+  })
+}
+
+export async function extendReservation(id: string) {
+  const reservation = await prisma.reservation.findUnique({ where: { id } })
+
+  if (!reservation) throw new ReservationNotFoundError()
+  if (reservation.status !== 'PENDING') {
+    throw new InvalidStatusTransitionError(reservation.status, 'EXTENDED')
+  }
+
+  const newExpiresAt = new Date(Date.now() + RESERVATION_TTL_MINUTES * 60_000)
+
+  return prisma.reservation.update({
+    where: { id },
+    data: { expiresAt: newExpiresAt },
+    include: { stock: { include: { product: true, warehouse: true } } },
+  })
+}

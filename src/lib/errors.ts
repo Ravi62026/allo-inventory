@@ -42,3 +42,21 @@ export class DuplicateIdempotencyKeyError extends AppError {
     super('IDEMPOTENCY_CONFLICT', 'Request with this Idempotency-Key is already processing', 409)
   }
 }
+
+export class DuplicateEmailError extends AppError {
+  constructor() {
+    super('DUPLICATE_EMAIL', 'An account with this email already exists', 409)
+  }
+}
+
+export class InvalidCredentialsError extends AppError {
+  constructor() {
+    super('INVALID_CREDENTIALS', 'Invalid email or password', 401)
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  constructor() {
+    super('UNAUTHORIZED', 'Authentication required', 401)
+  }
+}

@@ -9,7 +9,9 @@
       "Bash(curl -s http://localhost:3000/api/warehouses)",
       "Bash(time curl -s -o /dev/null http://localhost:3000/api/products)",
       "Bash(time curl -s -o /dev/null http://localhost:3000/api/warehouses)",
-      "Bash(curl -s http://localhost:3000/)"
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(npm install *)",
+      "Bash(npx prisma *)"
     ]
   }
 }

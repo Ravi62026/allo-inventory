@@ -45,8 +45,48 @@ export default function ProductsPage() {
   const [selectedWarehouse, setSelectedWarehouse] = useState('')
   const [inStockOnly, setInStockOnly] = useState(false)
   const [reservingProduct, setReservingProduct] = useState<ProductListing | null>(null)
+  // Prefs: wait for user pref check before first fetch
+  const [prefsReady, setPrefsReady] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  // On mount: check auth, load saved filters from Redis via /api/auth/prefs
+  useEffect(() => {
+    const loadPrefs = async () => {
+      try {
+        const meRes = await fetch('/api/auth/me')
+        const meData = await meRes.json()
+        if (meData.success) {
+          setUserId(meData.data.id)
+          const prefsRes = await fetch('/api/auth/prefs')
+          const prefsData = await prefsRes.json()
+          if (prefsData.success && prefsData.data) {
+            if (prefsData.data.category)    setSelectedCategory(prefsData.data.category)
+            if (prefsData.data.warehouseId) setSelectedWarehouse(prefsData.data.warehouseId)
+            if (prefsData.data.inStockOnly) setInStockOnly(prefsData.data.inStockOnly)
+          }
+        }
+      } finally {
+        setPrefsReady(true)
+      }
+    }
+    loadPrefs()
+  }, [])
+
+  // Debounce-save prefs when filters change (only if logged in)
+  useEffect(() => {
+    if (!userId || !prefsReady) return
+    const timer = setTimeout(() => {
+      fetch('/api/auth/prefs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: selectedCategory, warehouseId: selectedWarehouse, inStockOnly }),
+      }).catch(() => {})
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [selectedCategory, selectedWarehouse, inStockOnly, userId, prefsReady])
 
   useEffect(() => {
+    if (!prefsReady) return // wait until prefs are loaded to avoid double-fetch
     const fetchData = async () => {
       try {
         setLoading(true)
@@ -73,7 +113,7 @@ export default function ProductsPage() {
       }
     }
     fetchData()
-  }, [selectedCategory, selectedWarehouse, inStockOnly])
+  }, [selectedCategory, selectedWarehouse, inStockOnly, prefsReady])
 
   const categories = [...new Set(products.map(p => p.category))]
   const totalAvailableUnits = products.reduce(

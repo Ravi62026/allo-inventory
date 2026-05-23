@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(cd c:\\\\Users\\\\ravi1\\\\allo-inventory; $env:DATABASE_URL = \"postgresql://neon:pFYFo59c0Spi@ep-cool-dream-a5x3gzco.us-east-2.neon.tech/neon\"; $env:DIRECT_URL = \"postgresql://neon:pFYFo59c0Spi@ep-cool-dream-a5x3gzco.us-east-2.neon.tech/neon?sslmode=require\"; node check-db.mjs)"
+    ]
+  }
+}

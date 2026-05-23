@@ -73,9 +73,24 @@ model Stock {
   @@map("stocks")
 }
 
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservations Reservation[]
+
+  @@index([email])
+  @@map("users")
+}
+
 model Reservation {
   id          String            @id @default(cuid())
   stockId     String
+  userId      String?
   units       Int
   status      ReservationStatus @default(PENDING)
   expiresAt   DateTime
@@ -85,9 +100,11 @@ model Reservation {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  stock Stock @relation(fields: [stockId], references: [id])
+  stock Stock  @relation(fields: [stockId], references: [id])
+  user  User?  @relation(fields: [userId], references: [id])
 
   @@index([stockId])
-  @@index([status, expiresAt]) // optimised for expiry cleanup queries
+  @@index([userId])
+  @@index([status, expiresAt])
   @@map("reservations")
 }

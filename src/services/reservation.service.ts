@@ -14,7 +14,7 @@ async function invalidateProductCache() {
   await invalidateCache('products:*')
 }
 
-export async function createReservation(stockId: string, units: number) {
+export async function createReservation(stockId: string, units: number, userId?: string) {
   // SELECT FOR UPDATE acquires a row-level lock on the stock row.
   // Concurrent requests block here until the first transaction commits,
   // ensuring exactly one reservation succeeds when stock is limited.
@@ -41,7 +41,7 @@ export async function createReservation(stockId: string, units: number) {
     const expiresAt = new Date(Date.now() + RESERVATION_TTL_MINUTES * 60_000)
 
     return tx.reservation.create({
-      data: { stockId, units, status: 'PENDING', expiresAt },
+      data: { stockId, units, status: 'PENDING', expiresAt, ...(userId ? { userId } : {}) },
       include: { stock: { include: { product: true, warehouse: true } } },
     })
   })

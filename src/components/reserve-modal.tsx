@@ -1,14 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   X, Clock, CheckCircle, RefreshCw, AlertTriangle,
   Minus, Plus, Loader2, Users, MapPin, ArrowRight,
+  LogIn, UserPlus, ChevronRight,
 } from 'lucide-react'
 import type { ProductListing } from '@/types'
 
-type View = 'select' | 'conflict'
+type View = 'select' | 'auth-prompt' | 'conflict'
 
 interface ConflictInfo {
   lockId: string
@@ -37,6 +38,7 @@ export default function ReserveModal({ product, onClose }: Props) {
   const [quantity, setQuantity] = useState(1)
   const [submitting, setSubmitting] = useState(false)
   const [conflict, setConflict] = useState<ConflictInfo | null>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   const selected = product.availability.find(a => a.stockId === selectedId)
   const maxUnits = selected?.availableUnits ?? 0
@@ -45,7 +47,15 @@ export default function ReserveModal({ product, onClose }: Props) {
   const holdUntil = new Date(Date.now() + 10 * 60 * 1000)
   const holdStr = holdUntil.toLocaleTimeString('en-IN', { hour12: false })
 
-  const handleConfirm = async () => {
+  // Silently check auth on open
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.json())
+      .then(d => { if (d.success) setIsLoggedIn(true) })
+      .catch(() => {})
+  }, [])
+
+  const doReserve = async () => {
     if (!selectedId) return
     try {
       setSubmitting(true)
@@ -76,11 +86,89 @@ export default function ReserveModal({ product, onClose }: Props) {
     }
   }
 
+  // When user clicks "Confirm & Hold Units"
+  const handleConfirm = () => {
+    if (!selectedId) return
+    // If not logged in, nudge them first — they can skip
+    if (!isLoggedIn) {
+      setView('auth-prompt')
+    } else {
+      doReserve()
+    }
+  }
+
   const handleReroute = () => {
     if (conflict?.alternative) setSelectedId(conflict.alternative.stockId)
     setQuantity(1)
     setConflict(null)
     setView('select')
+  }
+
+  /* ── AUTH PROMPT VIEW ────────────────────────────────────────────────── */
+  if (view === 'auth-prompt') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+          onClick={e => e.stopPropagation()}>
+
+          <button onClick={onClose} className="absolute top-4 right-4 p-1.5 rounded-lg hover:bg-gray-100 transition z-10">
+            <X size={16} className="text-gray-400" />
+          </button>
+
+          {/* Top accent */}
+          <div className="h-1 bg-gradient-to-r from-blue-500 to-indigo-600" />
+
+          <div className="p-6">
+            {/* Icon */}
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
+              <LogIn size={20} className="text-blue-600" />
+            </div>
+
+            <h3 className="text-lg font-extrabold text-gray-900 mb-1">Sign in for full tracking</h3>
+            <p className="text-sm text-gray-500 mb-5 leading-relaxed">
+              Get a dashboard with your reservation history, hold timers, and spend analytics. Or continue as a guest — the reservation works either way.
+            </p>
+
+            {/* Benefits list */}
+            <div className="space-y-2 mb-6">
+              {[
+                'View all your reservations in one place',
+                'Resume pending holds from your dashboard',
+                'Track total spend & favourite categories',
+              ].map(b => (
+                <div key={b} className="flex items-start gap-2 text-xs text-gray-600">
+                  <CheckCircle size={13} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                  {b}
+                </div>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2.5">
+              <button
+                onClick={() => router.push(`/login?next=/products`)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 text-white font-bold text-sm hover:bg-blue-700 transition shadow-sm shadow-blue-200"
+              >
+                <LogIn size={14} /> Sign In
+              </button>
+              <button
+                onClick={() => router.push(`/signup?next=/products`)}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-gray-200 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition"
+              >
+                <UserPlus size={14} /> Create Account
+              </button>
+              <button
+                onClick={() => { setView('select'); doReserve() }}
+                className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-semibold text-gray-400 hover:text-gray-600 transition"
+              >
+                Skip — continue as guest <ChevronRight size={13} />
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   /* ── CONFLICT VIEW (Screen 3) ─────────────────────────────────────── */
@@ -110,7 +198,6 @@ export default function ReserveModal({ product, onClose }: Props) {
             </p>
           </div>
 
-          {/* Lock details */}
           <div className="mx-5 my-4 rounded-xl border border-gray-100 bg-gray-50 grid grid-cols-2 divide-x divide-gray-100 overflow-hidden">
             <div className="p-3">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Lock ID</p>
@@ -122,7 +209,6 @@ export default function ReserveModal({ product, onClose }: Props) {
             </div>
           </div>
 
-          {/* Competing reservations */}
           <div className="mx-5 mb-4 rounded-xl border border-gray-100 overflow-hidden">
             <div className="flex items-center justify-between px-3.5 py-2.5 bg-gray-50 border-b border-gray-100">
               <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500">
@@ -149,7 +235,6 @@ export default function ReserveModal({ product, onClose }: Props) {
             </div>
           </div>
 
-          {/* Alternative warehouse */}
           {conflict?.alternative && (
             <div className="mx-5 mb-4 rounded-xl border border-gray-100 overflow-hidden">
               <div className="px-3.5 py-2.5 bg-gray-50 border-b border-gray-100">
@@ -168,7 +253,6 @@ export default function ReserveModal({ product, onClose }: Props) {
             </div>
           )}
 
-          {/* Notice */}
           <div className="mx-5 mb-4 p-3.5 rounded-xl bg-amber-50 border border-amber-100 flex items-start gap-2">
             <div className="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center flex-shrink-0 mt-0.5">
               <span className="text-white text-[9px] font-bold">i</span>
@@ -179,13 +263,9 @@ export default function ReserveModal({ product, onClose }: Props) {
             </p>
           </div>
 
-          {/* Actions */}
           <div className="px-5 pb-5 flex flex-col gap-2">
             {conflict?.alternative ? (
-              <button
-                onClick={handleReroute}
-                className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition"
-              >
+              <button onClick={handleReroute} className="w-full py-3 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition">
                 Reroute & Reserve <ArrowRight size={14} />
               </button>
             ) : (

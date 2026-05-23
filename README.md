@@ -499,3 +499,4 @@ products:{query} → ProductListing[] (30s TTL)
 ---
 
 **Built with ❤️ for the Allo Engineering assignment**
+ 

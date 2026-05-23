@@ -13,7 +13,13 @@ export async function findAllProducts(query: ProductQuery) {
           warehouse: { isActive: true },
           ...(query.warehouseId ? { warehouseId: query.warehouseId } : {}),
         },
-        include: { warehouse: true },
+        include: {
+          warehouse: true,
+          reservations: {
+            where: { status: { in: ['PENDING', 'CONFIRMED'] } },
+            select: { units: true, status: true },
+          },
+        },
       },
     },
     orderBy: { createdAt: 'desc' },

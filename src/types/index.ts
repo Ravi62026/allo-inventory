@@ -28,6 +28,7 @@ export type StockAvailability = {
   warehouseLocation: string
   totalUnits: number
   reservedUnits: number
+  pendingUnits: number
   availableUnits: number
 }
 

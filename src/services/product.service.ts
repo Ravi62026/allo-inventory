@@ -24,15 +24,22 @@ export async function listProducts(query: ProductQuery): Promise<ProductListing[
 
       return products
         .map((product) => {
-          const availability = product.stocks.map((stock) => ({
-            stockId: stock.id,
-            warehouseId: stock.warehouseId,
-            warehouseName: stock.warehouse.name,
-            warehouseLocation: stock.warehouse.location,
-            totalUnits: stock.totalUnits, 
-            reservedUnits: stock.reservedUnits,
-            availableUnits: stock.totalUnits - stock.reservedUnits,
-          }))
+          const availability = product.stocks.map((stock) => {
+            const pendingUnits = stock.reservations
+              .filter((r: any) => r.status === 'PENDING')
+              .reduce((sum: number, r: any) => sum + r.units, 0)
+
+            return {
+              stockId: stock.id,
+              warehouseId: stock.warehouseId,
+              warehouseName: stock.warehouse.name,
+              warehouseLocation: stock.warehouse.location,
+              totalUnits: stock.totalUnits,
+              reservedUnits: stock.reservedUnits,
+              pendingUnits,
+              availableUnits: stock.totalUnits - stock.reservedUnits,
+            }
+          })
 
           if (query.inStockOnly && availability.every((a) => a.availableUnits <= 0)) {
             return null

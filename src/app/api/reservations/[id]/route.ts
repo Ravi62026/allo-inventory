@@ -1,15 +1,11 @@
 import { NextRequest } from 'next/server'
 import { ok, handleError } from '@/lib/api-response'
 import { getReservation } from '@/services/reservation.service'
-import { IdParamSchema } from '@/schemas/common.schema'
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   try {
-    const { id } = IdParamSchema.parse(await params)
-    const reservation = await getReservation(id)
+    const reservation = await getReservation(params.id)
     return ok(reservation)
   } catch (error) {
     return handleError(error)

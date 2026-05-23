@@ -1,15 +1,11 @@
 import { NextRequest } from 'next/server'
 import { ok, handleError } from '@/lib/api-response'
 import { releaseReservation } from '@/services/reservation.service'
-import { IdParamSchema } from '@/schemas/common.schema'
 
-export async function POST(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+  const params = await props.params
   try {
-    const { id } = IdParamSchema.parse(await params)
-    const reservation = await releaseReservation(id)
+    const reservation = await releaseReservation(params.id)
     return ok(reservation)
   } catch (error) {
     return handleError(error)

@@ -249,6 +249,7 @@ export default function ProductsPage() {
                 {products.map(product => {
                   const totalAvail = product.availability.reduce((s, a) => s + a.availableUnits, 0)
                   const totalRes   = product.availability.reduce((s, a) => s + a.reservedUnits, 0)
+                  const totalPending = product.availability.reduce((s, a) => s + a.pendingUnits, 0)
                   const totalUnits = product.availability.reduce((s, a) => s + a.totalUnits, 0)
                   const isInStock  = totalAvail > 0
                   const isLowStock = totalAvail > 0 && totalAvail < 10
@@ -415,7 +416,7 @@ export default function ProductsPage() {
                                 <div className="flex justify-between text-[10px] text-gray-400">
                                   <span>
                                     <span className="text-emerald-600 font-medium">{stock.availableUnits}</span> avl ·{' '}
-                                    <span className="text-orange-500 font-medium">{stock.reservedUnits}</span> res ·{' '}
+                                    <span className="text-orange-500 font-medium">{stock.pendingUnits}</span> held ·{' '}
                                     <span className="font-medium">{stock.totalUnits}</span> total
                                   </span>
                                   <span className="text-gray-300">synced now</span>
@@ -429,11 +430,11 @@ export default function ProductsPage() {
                       {/* Card Footer */}
                       <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50/40 flex items-center justify-between gap-3 rounded-b-2xl">
                         <div className="flex items-center gap-1.5">
-                          {totalRes > 0 ? (
+                          {totalPending > 0 ? (
                             <>
                               <Lock size={11} className="text-orange-400 flex-shrink-0" />
                               <span className="text-[11px] font-semibold text-orange-600">
-                                {totalRes} unit{totalRes !== 1 ? 's' : ''} held
+                                {totalPending} unit{totalPending !== 1 ? 's' : ''} held
                               </span>
                             </>
                           ) : (

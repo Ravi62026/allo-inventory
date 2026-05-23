@@ -8,8 +8,15 @@ export async function getIdempotentResponse(
   key: string,
   endpoint: string
 ): Promise<CachedResponse | null> {
-  const cached = await redis.get<CachedResponse>(`idempotency:${endpoint}:${key}`)
-  return cached ?? null
+  const cached = await redis.get<string>(`idempotency:${endpoint}:${key}`)
+
+  if (!cached) return null
+
+  try {
+    return JSON.parse(cached) as CachedResponse
+  } catch {
+    return null
+  }
 }
 
 export async function saveIdempotentResponse(

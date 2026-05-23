@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const ProductQuerySchema = z.object({
-  warehouseId: z.string().cuid().optional(),
+  warehouseId: z.string().optional(),
   category: z.string().optional(),
   inStockOnly: z
     .string()

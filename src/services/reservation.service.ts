@@ -5,14 +5,20 @@ import {
   ReservationNotFoundError,
   InvalidStatusTransitionError,
 } from '@/lib/errors'
+import type { ReservationStatus } from '@prisma/client'
+import { invalidateCache } from '@/lib/cache'
 
 const RESERVATION_TTL_MINUTES = 10
+
+async function invalidateProductCache() {
+  await invalidateCache('products:*')
+}
 
 export async function createReservation(stockId: string, units: number) {
   // SELECT FOR UPDATE acquires a row-level lock on the stock row.
   // Concurrent requests block here until the first transaction commits,
   // ensuring exactly one reservation succeeds when stock is limited.
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const [stock] = await tx.$queryRaw<
       Array<{ id: string; totalUnits: number; reservedUnits: number }>
     >`
@@ -39,6 +45,9 @@ export async function createReservation(stockId: string, units: number) {
       include: { stock: { include: { product: true, warehouse: true } } },
     })
   })
+
+  await invalidateProductCache()
+  return result
 }
 
 export async function getReservation(id: string) {
@@ -81,7 +90,7 @@ export async function confirmReservation(id: string) {
 }
 
 export async function releaseReservation(id: string) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const reservation = await tx.reservation.findUnique({ where: { id } })
 
     if (!reservation) throw new ReservationNotFoundError()
@@ -100,6 +109,9 @@ export async function releaseReservation(id: string) {
       include: { stock: { include: { product: true, warehouse: true } } },
     })
   })
+
+  await invalidateProductCache()
+  return result
 }
 
 export async function expireStaleReservations() {
@@ -122,6 +134,7 @@ export async function expireStaleReservations() {
     }),
   ])
 
+  await invalidateProductCache()
   return { released: expired.length }
 }
 
@@ -145,9 +158,9 @@ export async function validateReservation(stockId: string, units: number) {
   }
 }
 
-export async function listReservations(status?: string) {
+export async function listReservations(status?: ReservationStatus) {
   return prisma.reservation.findMany({
-    where: status ? { status: status as any } : undefined,
+    where: status ? { status } : undefined,
     include: { stock: { include: { product: true, warehouse: true } } },
     orderBy: { createdAt: 'desc' },
   })

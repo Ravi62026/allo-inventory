@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\ravi1\\\\allo-inventory\\\\.claude\\\\skills\" -ErrorAction SilentlyContinue -Recurse -Filter \"SKILL.md\")",
+      "Bash(Select-Object -First 5)",
+      "Bash(curl -s http://localhost:3000/how-it-works)",
+      "Bash(chromium-cli \"http://localhost:3000/how-it-works\" --screenshot --width 1440 --height 2400 --output \"/tmp/how-it-works.png\")",
+      "Bash(curl -s http://localhost:3000/products)",
+      "Bash(curl -s http://localhost:3000/api/warehouses)",
+      "Bash(time curl -s -o /dev/null http://localhost:3000/api/products)",
+      "Bash(time curl -s -o /dev/null http://localhost:3000/api/warehouses)",
+      "Bash(curl -s http://localhost:3000/)"
+    ]
+  }
+}

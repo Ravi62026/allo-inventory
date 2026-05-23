@@ -20,5 +20,7 @@ export const ReservationResponseSchema = z.object({
   createdAt: z.string().datetime(),
 })
 
+export const ReservationStatusSchema = z.enum(['PENDING', 'CONFIRMED', 'RELEASED'])
+
 export type CreateReservationInput = z.infer<typeof CreateReservationSchema>
 export type ReservationResponse = z.infer<typeof ReservationResponseSchema>

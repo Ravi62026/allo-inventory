@@ -22,6 +22,14 @@ When customers proceed to checkout, payment can take several minutes (3DS flows,
 - ✅ **Automatic Expiry**: Vercel Cron job runs every minute to release expired reservations
 - ✅ **Live Countdown Timer**: Frontend countdown shows time left to confirm
 - ✅ **Error Handling**: User-visible messages for 409 (insufficient stock) and 410 (expired)
+- ✅ **Pending vs Confirmed Tracking**: Only PENDING (temporary) reservations show as "held"; CONFIRMED orders don't
+
+### Authentication & User Features
+- ✅ **Optional Authentication**: Entire app works as guest; auth only in reserve modal (Sign In / Sign Up / Skip)
+- ✅ **User Dashboard**: Reservation stats, recent orders, spend tracking, top categories
+- ✅ **Per-User Filter Preferences**: Saved to Redis (30-day TTL) — fast product list next visit
+- ✅ **Session Management**: Redis-based httpOnly cookies, 7-day TTL
+- ✅ **Password Security**: bcryptjs hashing (12 rounds)
 
 ### Advanced Features
 - ✅ **Idempotency**: Redis-backed `Idempotency-Key` support prevents duplicate charges on retries
@@ -29,6 +37,7 @@ When customers proceed to checkout, payment can take several minutes (3DS flows,
 - ✅ **Type Safety**: Full TypeScript end-to-end with Zod validation
 - ✅ **Docker**: Multi-stage builds, Alpine base, health checks
 - ✅ **API Validation**: Request/response validation with proper HTTP status codes
+- ✅ **Manifest Export**: Export reservation details as JSON on order confirmation
 
 ---
 
@@ -121,10 +130,31 @@ Request B: Waits for lock → Checks → InsufficientStock → 409 ✅
 
 ## 📊 API Endpoints
 
+### Authentication
+```
+POST /api/auth/signup
+→ User created + session set | 409 (duplicate email)
+
+POST /api/auth/login
+→ Session created | 401 (invalid credentials)
+
+POST /api/auth/logout
+→ Session deleted
+
+GET /api/auth/me
+→ User | null (guest)
+
+GET /api/auth/prefs
+→ Saved filters (category, warehouseId, inStockOnly) | null (guest)
+
+PUT /api/auth/prefs
+→ Filters saved to Redis (30-day TTL)
+```
+
 ### Products
 ```
 GET /api/products?category=Wellness&warehouseId=wh-mumbai&inStockOnly=true
-→ ProductListing[] with availability per warehouse
+→ ProductListing[] with availability + pendingUnits per warehouse
 ```
 
 ### Warehouses
@@ -136,7 +166,7 @@ GET /api/warehouses
 ### Reservations
 ```
 POST /api/reservations
-→ Reservation | 409 (insufficient stock)
+→ Reservation (PENDING) | 409 (insufficient stock)
 
 GET /api/reservations/:id
 → Reservation | 404 (not found)
@@ -151,6 +181,18 @@ POST /api/reservations/:id/extend
 → Reservation (expiresAt extended by 10min)
 ```
 
+### Dashboard
+```
+GET /api/dashboard
+→ User stats, recent reservations (auth required)
+```
+
+### Cron
+```
+POST /api/cron/expire
+→ Expired reservations auto-released (Vercel Cron, protected by CRON_SECRET)
+```
+
 ---
 
 ## 🌐 Frontend Pages
@@ -158,8 +200,13 @@ POST /api/reservations/:id/extend
 | Page | Route | Features |
 |------|-------|----------|
 | **Landing** | `/` | Hero + Features + CTA |
-| **Products** | `/products` | Grid, filters, stock per warehouse |
-| **Checkout** | `/checkout/[id]` | Timer, confirm/cancel, error handling |
+| **Sign In** | `/login` | Email/password form, remember me, redirects |
+| **Sign Up** | `/signup` | Email/password/name form, validation |
+| **Dashboard** | `/dashboard` | Stats cards, recent reservations, quick links (auth required) |
+| **Products** | `/products` | 2-column grid, per-warehouse stock table, demand bars, filters (guest-friendly) |
+| **Reserve Modal** | Modal | Warehouse select, quantity picker, auth prompt with guest skip option |
+| **Checkout** | `/checkout/[id]` | Timer, system verification, allocation log, confirm/cancel (guest-friendly) |
+| **Allocation Confirmed** | `/checkout/[id]` | Success page, manifest export, manage fulfillment, browse products |
 
 ---
 
@@ -316,6 +363,11 @@ docker-compose ps
 ## 📊 Database Schema
 
 ```
+Users
+├── id, name, email (unique), password (bcrypt)
+├── createdAt, updatedAt
+└── relations: reservations[]
+
 Products
 ├── id, name, price, category, imageUrl, isActive
 └── relations: stocks[]
@@ -332,26 +384,58 @@ Stocks (Product × Warehouse)
 └── relations: product, warehouse, reservations[]
 
 Reservations
-├── id, stockId, units, status (PENDING/CONFIRMED/RELEASED)
+├── id, stockId, userId (optional), units, status (PENDING/CONFIRMED/RELEASED)
 ├── expiresAt, confirmedAt, releasedAt
 ├── index: (status, expiresAt) for expiry queries
-└── relations: stock with product & warehouse
+├── index: userId for dashboard queries
+└── relations: stock with product & warehouse, user
+```
+
+### Redis Keys
+```
+session:{sessionId} → User object (7-day TTL)
+user:{userId}:prefs → {category, warehouseId, inStockOnly} (30-day TTL)
+user:{userId}:dashboard → {stats, recent reservations} (60s TTL)
+idempotency:{scope}:{key} → Response body (24-hour TTL)
+products:{query} → ProductListing[] (30s TTL)
 ```
 
 ---
 
-## 📝 Example Workflow
+## 📝 Example Workflows
 
+### As Guest (No Auth Required)
 ```
 1. Visit http://localhost:3000
-2. Click "Start Shopping"
-3. Browse products, click "Reserve Now"
-4. Enter quantity, click "Reserve"
-5. Redirected to /checkout/[reservationId]
-6. See 10-minute countdown timer
-7. Click "Confirm Purchase" before timer expires
-8. See success message
-9. Done! ✅
+2. Click "Start Shopping" → /products
+3. Browse products, click "Reserve"
+4. Select warehouse, quantity → click "Confirm & Hold Units"
+5. See auth prompt (optional: can skip)
+6. Click "Skip — continue as guest"
+7. Redirected to /checkout/[reservationId]
+8. See 10-minute countdown timer
+9. Click "Commit & Fulfill" before timer expires
+10. See allocation confirmed page with manifest export
+11. Done! ✅
+```
+
+### With Authentication
+```
+1. Visit http://localhost:3000
+2. Click "Get Started" → /signup
+3. Enter name, email, password → create account
+4. Redirected to /dashboard
+5. See reservation stats + recent orders
+6. Click "Browse Products"
+7. Browse products (filters auto-saved for next visit)
+8. Click "Reserve" → modal opens
+9. In auth prompt, click "Sign In" (already logged in)
+10. Confirm warehouse selection
+11. Redirected to /checkout/[reservationId]
+12. Click "Commit & Fulfill"
+13. See allocation confirmed page + manifest export
+14. Dashboard now shows updated stats
+15. Done! ✅
 ```
 
 ---
@@ -366,21 +450,51 @@ Reservations
 
 ---
 
-## ✅ Submission Checklist
+## ✅ Feature Checklist
 
-- [x] Backend: Race-condition free logic
-- [x] Backend: All required API endpoints
-- [x] Backend: Idempotency (bonus)
-- [x] Backend: Vercel Cron
-- [x] Frontend: Product listing
-- [x] Frontend: Checkout with countdown
-- [x] Frontend: Error handling (409, 410)
-- [x] Frontend: Real-time updates
-- [x] Database: PostgreSQL + Prisma
-- [x] Cache: Redis
-- [x] Docker: Dockerfile + Compose
-- [x] Deployment: Instructions
-- [x] Documentation: This README
+### Core Requirements
+- [x] Backend: Race-condition free logic with `SELECT FOR UPDATE`
+- [x] Backend: All required API endpoints (reserve, confirm, release)
+- [x] Backend: Idempotency with Redis (bonus)
+- [x] Backend: Vercel Cron for expiry
+- [x] Frontend: Product listing with per-warehouse inventory
+- [x] Frontend: Checkout with countdown timer
+- [x] Frontend: Error handling (409 conflict, 410 expired)
+- [x] Frontend: Real-time stock updates
+- [x] Database: PostgreSQL + Prisma ORM
+- [x] Cache: Redis with multiple key strategies
+- [x] Docker: Multi-stage build + Compose
+- [x] Deployment: Vercel + Neon + Upstash instructions
+
+### Authentication & User Features
+- [x] User signup with name/email/password
+- [x] User login with email/password
+- [x] Session management (httpOnly cookies, 7-day TTL)
+- [x] Password hashing (bcryptjs, 12 rounds)
+- [x] User dashboard with stats & reservation tracking
+- [x] Per-user filter preferences (Redis, 30-day TTL)
+- [x] Optional auth in reserve modal (sign in / create account / skip as guest)
+- [x] Entire flow accessible without authentication
+
+### Advanced Features
+- [x] Differentiate PENDING vs CONFIRMED reservations
+- [x] Only PENDING reservations show as "units held"
+- [x] 2-column product grid with enterprise UI
+- [x] Colored category badges + accent bars
+- [x] Demand bars showing reservation pressure
+- [x] Per-warehouse stock breakdown with progress bars
+- [x] Reserve modal with warehouse selection + quantity picker
+- [x] Allocation confirmed page with manifest export
+- [x] Manage fulfillment navigation to warehouses
+- [x] Navbar with user menu (avatar, dashboard, sign out)
+
+### Documentation
+- [x] Comprehensive README with examples
+- [x] API endpoint documentation
+- [x] Database schema documentation
+- [x] Workflow examples (guest & authenticated)
+- [x] Troubleshooting guide
+- [x] Design decision trade-offs
 
 ---
 
